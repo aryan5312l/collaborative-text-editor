@@ -1,4 +1,4 @@
-const {applyOperation} = require("./services/operationService");
+const {applyOperation, transformOperation} = require("./services/operationService");
 const Document = require("./models/documentModel");
 
 let documents = {};
@@ -35,6 +35,18 @@ function initSocket(server){
 
                 socket.to(docId).emit("receive-operation", operation);
             }
+
+            // const transformedOp = transformOperation(operation, doInstance.history);
+
+            // doInstance.content = applyOperation(doInstance.content, transformedOp);
+
+            // doInstance.history.push(transformedOp);
+
+            // socket.to(docId).emit("receive-operation", transformedOp);
+        });
+
+        socket.on("cursor-move", ({docId, position}) => {
+            socket.to(docId).emit("receive-cursor", {userId: socket.id, position});
         });
 
         socket.on("disconnect", () => {

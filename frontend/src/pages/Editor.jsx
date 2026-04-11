@@ -7,6 +7,7 @@ import { applyOperation } from "../utils/operationUtils";
 export default function Editor() {
     const { id: docId } = useParams();
     const [content, setContent] = useState("");
+    const [cursors, setCursors] = useState({});
 
     useEffect(() => {
         socket.emit("join-document", docId);
@@ -21,10 +22,30 @@ export default function Editor() {
             setContent((prev) => applyOperation(prev, operation));
         });
 
+        socket.on("receive-cursor", ({ userId, position }) => {
+            setCursors((prev) => ({
+                ...prev,
+                [userId]: position
+            }));
+        });
+
         return () => {
             socket.off();
         };
     }, []);
 
-    return <TextEditor content={content} setContent={setContent} docId={docId} />
+    return (
+        <div>
+            <TextEditor content={content} setContent={setContent} docId={docId} cursors={cursors} />
+
+            <div>
+                <h4>Other Users Cursor:</h4>
+                {Object.entries(cursors).map(([userId, pos]) => (
+                    <div key={userId}>
+                        {userId}: {pos}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
 }
