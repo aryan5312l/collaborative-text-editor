@@ -25,7 +25,7 @@ function initSocket(server){
             socket.emit("load-document", documents[docId].content || "");
         });
 
-        socket.on("send-operation", ({docId, operation}) => {
+        socket.on("send-operation", ({docId, operation, cursor}) => {
             const doInstance = documents[docId];
 
             if(doInstance){
@@ -33,7 +33,11 @@ function initSocket(server){
 
                 doInstance.history.push(operation);
 
-                socket.to(docId).emit("receive-operation", operation);
+                socket.to(docId).emit("receive-operation", {
+                    operation,
+                    userId: socket.id,
+                    cursor
+                });
             }
 
             // const transformedOp = transformOperation(operation, doInstance.history);
@@ -45,9 +49,7 @@ function initSocket(server){
             // socket.to(docId).emit("receive-operation", transformedOp);
         });
 
-        socket.on("cursor-move", ({docId, position}) => {
-            socket.to(docId).emit("receive-cursor", {userId: socket.id, position});
-        });
+        
 
         socket.on("disconnect", () => {
             console.log("User disconnected", socket.id);

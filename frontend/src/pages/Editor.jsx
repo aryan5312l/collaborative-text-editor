@@ -18,16 +18,16 @@ export default function Editor() {
             }
         });
 
-        socket.on("receive-operation", (operation) => {
+        socket.on("receive-operation", ({operation, userId, cursor}) => {
             setContent((prev) => applyOperation(prev, operation));
-        });
 
-        socket.on("receive-cursor", ({ userId, position }) => {
             setCursors((prev) => ({
                 ...prev,
-                [userId]: position
+                [userId]: cursor
             }));
         });
+
+        
 
         return () => {
             socket.off();
