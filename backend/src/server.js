@@ -2,7 +2,7 @@ const express = require("express");
 require("dotenv").config();
 const http = require("http");
 const {initSocket} = require("./socketHandler");
-
+const path = require("path");
 const connectDB = require("./config/db");
 connectDB();
 const cors = require("cors");
