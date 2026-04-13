@@ -17,6 +17,14 @@ const server = http.createServer(app)
 
 initSocket(server);
 
+// Serve static files
+app.use(express.static(path.join(__dirname, "public")));
+
+// Handle all routes (React Router)
+app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 const port = process.env.PORT || 5000;
 server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
