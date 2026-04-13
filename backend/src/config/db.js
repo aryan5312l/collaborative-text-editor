@@ -2,10 +2,18 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
     try {
-        await mongoose.connect("mongodb://127.0.0.1:27017/collab-editor");
-        console.log("MongoDB connected");
+        const uri = process.env.MONGO_URI;
+        if (!uri) {
+            throw new Error("MONGO_URI is missing from .env file!");
+        }
+        
+        // This will help you see if the string is being read correctly
+        console.log("Attempting to connect to:", uri.split('@')[1]); 
+
+        await mongoose.connect(uri);
+        console.log("✅ MongoDB connected successfully");
     } catch (error) {
-        console.log(error);
+        console.error("❌ MongoDB connection error:", error.message);
         process.exit(1);
     }
 }

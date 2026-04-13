@@ -1,10 +1,10 @@
-const {applyOperation, transformOperation} = require("./services/operationService");
+const { applyOperation, transformOperation } = require("./services/operationService");
 const Document = require("./models/documentModel");
 
-let documents = {};
 
-function initSocket(server){
-    const {Server} = require("socket.io");
+
+function initSocket(server) {
+    const { Server } = require("socket.io");
 
     const io = new Server(server, {
         cors: {
@@ -15,30 +15,35 @@ function initSocket(server){
     io.on("connection", (socket) => {
         console.log("User connected: ", socket.id);
 
-        socket.on("join-document", (docId) => {
+        socket.on("join-document", async (docId) => {
             socket.join(docId);
 
-            if(!documents[docId]){
-                documents[docId] = new Document(docId);
-            }
+            const document = await Document.findOneAndUpdate(
+                { docId },
+                { $setOnInsert: { docId, content: "", history: [] } },
+                { returnDocument: "after", upsert: true }
+            );
 
-            socket.emit("load-document", documents[docId].content || "");
+            socket.emit("load-document", document.content || "");
         });
 
-        socket.on("send-operation", ({docId, operation, cursor}) => {
-            const doInstance = documents[docId];
+        socket.on("send-operation", async ({ docId, operation, cursor }) => {
+            const document = await Document.findOne({ docId });
 
-            if(doInstance){
-                doInstance.content = applyOperation(doInstance.content, operation);
+            if (!document) return;
 
-                doInstance.history.push(operation);
 
-                socket.to(docId).emit("receive-operation", {
-                    operation,
-                    userId: socket.id,
-                    cursor
-                });
-            }
+            document.content = applyOperation(document.content, operation);
+            document.history.push(operation);
+
+            await document.save();
+
+            socket.to(docId).emit("receive-operation", {
+                operation,
+                userId: socket.id,
+                cursor
+            });
+
 
             // const transformedOp = transformOperation(operation, doInstance.history);
 
@@ -49,7 +54,7 @@ function initSocket(server){
             // socket.to(docId).emit("receive-operation", transformedOp);
         });
 
-        
+
 
         socket.on("disconnect", () => {
             console.log("User disconnected", socket.id);
@@ -57,4 +62,4 @@ function initSocket(server){
     })
 }
 
-module.exports = {initSocket}
+module.exports = { initSocket }

@@ -1,13 +1,19 @@
-class Document {
-    constructor(id, content = ""){
-        this.id = id;
-        this.content = content;
-        this.history = [];
+const mongoose = require("mongoose");
+
+const documentSchema = new mongoose.Schema({
+    docId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    content: {
+        type: String,
+        default: ""
+    },
+    history: {
+        type: Array,
+        default: []
     }
+});
 
-    applyOperation(operation){
-
-    }
-}
-
-module.exports = Document;
+module.exports = mongoose.model("Document", documentSchema);
