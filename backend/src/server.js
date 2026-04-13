@@ -21,7 +21,7 @@ initSocket(server);
 app.use(express.static(path.join(__dirname, "public")));
 
 // Handle all routes (React Router)
-app.get("*", (req, res) => {
+app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
