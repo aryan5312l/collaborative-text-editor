@@ -7,15 +7,17 @@ const connectDB = require("./config/db");
 connectDB();
 const cors = require("cors");
 
-
-
 const app = express()
-app.use(cors())
+
+app.use(cors({
+    origin: "*", // later restrict
+}));
 
 const server = http.createServer(app)
 
 initSocket(server);
 
-server.listen(5000, () => {
-    console.log("Server is running on port 5000");
+const port = process.env.PORT || 5000;
+server.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 })
