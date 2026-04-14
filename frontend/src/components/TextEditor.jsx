@@ -20,12 +20,13 @@ export default function TextEditor({ content, setContent, docId, cursors }) {
             start++;
         }
 
+        if (newText === oldText) return;
+
         let operation = null;
 
         // INSERT
         if (newText.length > oldText.length) {
             const insertedText = newText.slice(start, newText.length - (oldText.length - start));
-
             if (!insertedText) return;
 
             operation = {
@@ -33,21 +34,18 @@ export default function TextEditor({ content, setContent, docId, cursors }) {
                 position: start,
                 text: insertedText
             };
-
-            //socket.emit("send-operation", { docId, operation });
         }
 
         // DELETE
         else {
             const deleteLength = oldText.length - newText.length;
+            if (deleteLength === 0) return;
 
             operation = {
                 type: "delete",
                 position: start,
                 length: deleteLength
             };
-
-            //socket.emit("send-operation", { docId, operation });
         }
 
         setContent(newText);
@@ -120,53 +118,58 @@ export default function TextEditor({ content, setContent, docId, cursors }) {
 
 
     return (
-        <div style={{ position: "relative", width: "600px" }}>
-            <textarea
-                value={content}
-                onChange={handleChange}
-                onSelect={handleChange}
-                rows={20}
-                cols={80}
-                style={{
-                    width: "100%",
-                    height: "300px",
-                    fontFamily: "monospace",
-                    fontSize: "16px",
-                    lineHeight: "20px",
-                    padding: "10px"
-                }}
-            />
+        <div>
+            <div style={{ position: "relative", width: "600px" }}>
+                <textarea
+                    value={content}
+                    onChange={handleChange}
+                    rows={20}
+                    cols={80}
+                    style={{
+                        width: "100%",
+                        height: "300px",
+                        fontFamily: "monospace",
+                        fontSize: "16px",
+                        lineHeight: "20px",
+                        padding: "10px"
+                    }}
+                />
 
-            <div
-                ref={mirrorRef}
-                style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    visibility: "hidden",
-                    whiteSpace: "pre-wrap",
-                    wordWrap: "break-word",
-                    fontFamily: "monospace",
-                    fontSize: "16px",
-                    lineHeight: "20px",
-                    padding: "10px",
-                    width: "100%",
-                }}
-            />
+                <div
+                    ref={mirrorRef}
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        visibility: "hidden",
+                        whiteSpace: "pre-wrap",
+                        wordWrap: "break-word",
+                        fontFamily: "monospace",
+                        fontSize: "16px",
+                        lineHeight: "20px",
+                        padding: "10px",
+                        width: "100%",
+                    }}
+                />
 
-            {/* Overlay */}
-            <div
-                style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    pointerEvents: "none"
-                }}
-            >
-                {renderCursors()}
+                {/* Overlay */}
+                <div
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        pointerEvents: "none"
+                    }}
+                >
+                    {renderCursors()}
+                </div>
             </div>
+
+            <button onClick={() => socket.emit("undo", docId)}>Undo</button>
+            <button onClick={() => socket.emit("redo", docId)}>Redo</button>
         </div>
+
     );
 }

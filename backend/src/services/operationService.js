@@ -41,4 +41,22 @@ function transformOperation(newOp, history){
     return transformed;
 }
 
-module.exports = {applyOperation, transformOperation};
+function invertOperation(content, operation){
+    if(operation.type === "insert"){
+        return {
+            type: "delete",
+            position: operation.position,
+            length: operation.text.length
+        };
+    }
+
+    const deletedText = content.slice(operation.position, operation.position + operation.length);
+
+    return {
+        type: "insert",
+        position: operation.position,
+        text: deletedText
+    };
+}
+
+module.exports = {applyOperation, transformOperation, invertOperation};
