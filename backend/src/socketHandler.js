@@ -1,7 +1,9 @@
 const { applyOperation, transformOperation } = require("./services/operationService");
 const Document = require("./models/documentModel");
 
-
+const saveTimers = {};
+const latestContent = {};
+const pendingOps = {};
 
 function initSocket(server) {
     const { Server } = require("socket.io");
@@ -21,37 +23,50 @@ function initSocket(server) {
             const document = await Document.findOneAndUpdate(
                 { docId },
                 { $setOnInsert: { docId, content: "", history: [] } },
-                { returnDocument: "after", upsert: true }
+                { upsert: true, returnDocument: "after" }
             );
 
-            socket.emit("load-document", document.content || "");
+            if (!latestContent[docId]) {
+                latestContent[docId] = document.content;
+            }
+
+            socket.emit("load-document", latestContent[docId]);
         });
 
         socket.on("send-operation", async ({ docId, operation, cursor }) => {
-            const document = await Document.findOne({ docId });
 
-            if (!document) return;
+            latestContent[docId] = applyOperation(latestContent[docId], operation);
 
+            if (!pendingOps[docId]) pendingOps[docId] = [];
+            pendingOps[docId].push(operation);
 
-            document.content = applyOperation(document.content, operation);
-            document.history.push(operation);
+            if (saveTimers[docId]) clearTimeout(saveTimers[docId]);
 
-            await document.save();
+            saveTimers[docId] = setTimeout(async () => {
+                try {
+                    const opsToSave = pendingOps[docId] || [];
+
+                    await Document.findOneAndUpdate(
+                        { docId },
+                        {
+                            content: latestContent[docId],
+                            $push: { history: { $each: opsToSave } }
+                        }
+                    );
+
+                    pendingOps[docId] = [];
+                    console.log("Saved to DB:", docId);
+
+                } catch (err) {
+                    console.error(err);
+                }
+            }, 1500);
 
             socket.to(docId).emit("receive-operation", {
                 operation,
                 userId: socket.id,
                 cursor
             });
-
-
-            // const transformedOp = transformOperation(operation, doInstance.history);
-
-            // doInstance.content = applyOperation(doInstance.content, transformedOp);
-
-            // doInstance.history.push(transformedOp);
-
-            // socket.to(docId).emit("receive-operation", transformedOp);
         });
 
 
