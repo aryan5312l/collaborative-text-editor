@@ -18,7 +18,7 @@ export default function Editor() {
             }
         });
 
-        socket.on("receive-operation", ({operation, userId, cursor}) => {
+        socket.on("receive-operation", ({ operation, userId, cursor }) => {
             setContent((prev) => applyOperation(prev, operation));
 
             setCursors((prev) => ({
@@ -27,11 +27,31 @@ export default function Editor() {
             }));
         });
 
-        
+        socket.on("receive-cursor-position", ({ userId, position }) => {
+            setCursors((prev) => ({
+                ...prev,
+                [userId]: position
+            }));
+        });
+
+        // Cleanup on unmount
+        socket.on("user-disconnected", ({ userId }) => {
+            setCursors((prev) => {
+                const newCursors = { ...prev };
+                delete newCursors[userId];
+                return newCursors;
+            });
+        });
 
         return () => {
-            socket.off();
+            socket.off("load-document");
+            socket.off("receive-operation");
+            socket.off("receive-cursor-position");
+            socket.off("user-disconnected");
+            socket.off("disconnect");
         };
+
+        
     }, []);
 
     return (

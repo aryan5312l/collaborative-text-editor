@@ -58,11 +58,11 @@ export default function TextEditor({ content, setContent, docId, cursors }) {
         });
     };
 
-    // const handleSelect = (e) => {
-    //     const cursorPos = e.target.selectionStart;
+    const handleSelect = (e) => {
+        const cursorPos = e.target.selectionStart;
 
-    //     socket.emit("cursor-move", { docId, position: cursorPos });
-    // };
+        socket.emit("cursor-move", { docId, position: cursorPos });
+    };
 
     function getCursorCoordinates(position) {
         const mirror = mirrorRef.current;
@@ -123,6 +123,8 @@ export default function TextEditor({ content, setContent, docId, cursors }) {
                 <textarea
                     value={content}
                     onChange={handleChange}
+                    onSelect={handleSelect}
+                    onClick={handleSelect}
                     rows={20}
                     cols={80}
                     style={{

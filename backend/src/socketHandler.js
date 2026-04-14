@@ -78,6 +78,14 @@ function initSocket(server) {
             });
         });
 
+        //Cursor Move Handle
+        socket.on("cursor-move", ({ docId, position }) => {
+            socket.to(docId).emit("receive-cursor-position", {
+                userId: socket.id,
+                position
+            });
+        });
+
 
         //Receive operation from client
         socket.on("send-operation", async ({ docId, operation, cursor }) => {
@@ -135,6 +143,8 @@ function initSocket(server) {
 
         socket.on("disconnect", () => {
             console.log("User disconnected", socket.id);
+
+            io.emit("user-disconnected", { userId: socket.id });
         });
     })
 }
