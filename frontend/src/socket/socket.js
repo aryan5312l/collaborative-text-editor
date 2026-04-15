@@ -1,9 +1,9 @@
 import {io} from "socket.io-client";
 
+const URL = import.meta.env.DEV
+    ? "http://localhost:5000"
+    : "/";
 
-
-// export const socket = io("/", {
-//     transports: ["websocket"]
-// });
-
-export const socket = io("localhost:5000")
+export const socket = io(URL, {
+    transports: ["websocket"]
+});
