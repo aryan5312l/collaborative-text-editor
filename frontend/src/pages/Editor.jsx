@@ -3,11 +3,15 @@ import { socket } from "../socket/socket";
 import TextEditor from "../components/TextEditor";
 import { useParams } from "react-router-dom";
 import { applyOperation } from "../utils/operationUtils";
+import { useRef } from "react";
 
 export default function Editor() {
     const { id: docId } = useParams();
     const [content, setContent] = useState("");
     const [cursors, setCursors] = useState({});
+
+    const undoStackRef = useRef([]);
+    const redoStackRef = useRef([]);
 
     useEffect(() => {
         socket.emit("join-document", docId);
@@ -19,6 +23,7 @@ export default function Editor() {
         });
 
         socket.on("receive-operation", ({ operation, userId, cursor }) => {
+            if(userId === socket.id) return; // Ignore own operations
             setContent((prev) => applyOperation(prev, operation));
 
             setCursors((prev) => ({
@@ -56,7 +61,14 @@ export default function Editor() {
 
     return (
         <div>
-            <TextEditor content={content} setContent={setContent} docId={docId} cursors={cursors} />
+            <TextEditor 
+                content={content} 
+                setContent={setContent} 
+                docId={docId} 
+                cursors={cursors} 
+                undoStackRef={undoStackRef}
+                redoStackRef={redoStackRef}
+            />
 
             <div>
                 <h4>Other Users Cursor:</h4>

@@ -1,13 +1,17 @@
+import { invertOperation } from "../utils/operationUtils";
 import { socket } from "../socket/socket";
 import { useRef } from "react";
+import { applyOperation } from "../utils/operationUtils";
 
-export default function TextEditor({ content, setContent, docId, cursors }) {
+export default function TextEditor({ content, setContent, docId, cursors, undoStackRef, redoStackRef }) {
     const mirrorRef = useRef(null);
 
     const handleChange = (e) => {
         const newText = e.target.value;
         const oldText = content || "";
         const cursorPos = e.target.selectionStart;
+
+        
 
         let start = 0;
 
@@ -47,6 +51,17 @@ export default function TextEditor({ content, setContent, docId, cursors }) {
                 length: deleteLength
             };
         }
+
+        //if(!operation) return;
+
+        const inverseOp = invertOperation(oldText, operation);
+
+        //Store both original and inverse in undo stack
+        undoStackRef.current.push({
+            original: operation,
+            inverse: inverseOp
+        });
+        redoStackRef.current = []; // Clear redo stack on new operation
 
         setContent(newText);
 
@@ -116,6 +131,44 @@ export default function TextEditor({ content, setContent, docId, cursors }) {
         });
     };
 
+    const handleUndo = () => {
+        if (undoStackRef.current.length === 0) return;
+
+        const entry = undoStackRef.current.pop();
+        const inverseOp = entry.inverse;
+
+        const newContent = applyOperation(content, inverseOp);
+
+        redoStackRef.current.push(entry);
+
+        setContent(newContent);
+
+        socket.emit("send-operation", {
+            docId,
+            operation: inverseOp,
+            cursor: null
+        });
+    };
+
+    const handleRedo = () => {
+        if (redoStackRef.current.length === 0) return;
+
+        const entry = redoStackRef.current.pop();
+        const originalOp = entry.original;
+
+        const newContent = applyOperation(content, originalOp);
+
+        undoStackRef.current.push(entry);
+
+        setContent(newContent);
+
+        socket.emit("send-operation", { 
+            docId,
+            operation: originalOp,
+            cursor: null
+         });
+    };
+
 
     return (
         <div>
@@ -169,8 +222,8 @@ export default function TextEditor({ content, setContent, docId, cursors }) {
                 </div>
             </div>
 
-            <button onClick={() => socket.emit("undo", docId)}>Undo</button>
-            <button onClick={() => socket.emit("redo", docId)}>Redo</button>
+            <button onClick={handleUndo}>Undo</button>
+            <button onClick={handleRedo}>Redo</button>
         </div>
 
     );
