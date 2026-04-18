@@ -158,7 +158,7 @@ function initSocket(server) {
 
 
         socket.on("disconnect", () => {
-            console.log("User disconnected", socket.id);
+            console.log("User disconnected", socket.user._id, socket.user.name);
 
             io.emit("user-disconnected", { userId: socket.id });
         });

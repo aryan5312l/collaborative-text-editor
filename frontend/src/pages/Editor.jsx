@@ -4,6 +4,7 @@ import TextEditor from "../components/TextEditor";
 import { useParams } from "react-router-dom";
 import { applyOperation } from "../utils/operationUtils";
 import { useRef } from "react";
+import { getToken, logout } from "../utils/auth";
 
 export default function Editor() {
     const { id: docId } = useParams();
@@ -14,6 +15,16 @@ export default function Editor() {
     const redoStackRef = useRef([]);
 
     useEffect(() => {
+        const token = getToken();
+        if (!token) {
+            console.error("No token found, redirecting to login");
+            window.location.href = "/login";
+            return;
+        }
+
+        socket.auth = { token };
+        socket.connect();
+
         socket.emit("join-document", docId);
 
         socket.on("load-document", (data) => {
@@ -50,6 +61,12 @@ export default function Editor() {
 
         socket.on("connect_error", (err) => {
             console.error("Connection error:", err);
+
+            if(err.message === "Authentication error") {
+                //logout user
+                logout();
+                window.location.href = "/login";
+            }
         });
 
         return () => {

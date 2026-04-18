@@ -13,15 +13,12 @@ const { protect } = require("./middleware/authMiddleware");
 const cors = require("cors");
 app.use(express.json());
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.get("/api/test", protect, (req, res) => {
-    res.json({ message: "Protected route accessed", user: req.user });
-});
-
 app.use(cors({
     origin: "*", // later restrict
 }));
+
+// Routes
+app.use("/api/auth", authRoutes);
 
 const server = http.createServer(app)
 
