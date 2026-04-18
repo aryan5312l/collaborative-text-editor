@@ -48,6 +48,10 @@ export default function Editor() {
             });
         });
 
+        socket.on("connect_error", (err) => {
+            console.error("Connection error:", err);
+        });
+
         return () => {
             socket.off("load-document");
             socket.off("receive-operation");

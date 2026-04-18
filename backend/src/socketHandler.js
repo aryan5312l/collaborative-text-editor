@@ -1,5 +1,7 @@
 const { applyOperation, transformOperation, invertOperation } = require("./services/operationService");
 const Document = require("./models/documentModel");
+const jwt = require("jsonwebtoken");
+const User = require("./models/userModel");
 
 const saveTimers = {};
 const latestContent = {};
@@ -15,8 +17,31 @@ function initSocket(server) {
         }
     });
 
+    io.use(async (socket, next) => {
+        try {
+            const token = socket.handshake.auth.token;
+
+            if(!token) {
+                return next(new Error("Authentication error"));
+            }
+
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            
+            const user = await User.findById(decoded.id).select("-password");
+
+            if (!user) {
+                return next(new Error("User not found"));
+            }
+
+            socket.user = user;
+            next();
+        } catch (error) {
+            return next(new Error("Authentication error"));
+        }
+    });
+
     io.on("connection", (socket) => {
-        console.log("User connected: ", socket.id);
+        console.log("User connected: ", socket.user._id, socket.user.name);
 
         //Join document room
         socket.on("join-document", async (docId) => {
@@ -124,7 +149,8 @@ function initSocket(server) {
             // Broadcast
             socket.to(docId).emit("receive-operation", {
                 operation,
-                userId: socket.id,
+                userId: socket.user._id,
+                userName: socket.user.name,
                 cursor
             });
         });
@@ -139,4 +165,4 @@ function initSocket(server) {
     })
 }
 
-module.exports = { initSocket }
+module.exports = { initSocket };
