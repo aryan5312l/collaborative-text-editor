@@ -5,9 +5,19 @@ const {initSocket} = require("./socketHandler");
 const path = require("path");
 const connectDB = require("./config/db");
 connectDB();
-const cors = require("cors");
-
+const authRoutes = require("./routes/authRoutes");
 const app = express()
+
+const { protect } = require("./middleware/authMiddleware");
+
+const cors = require("cors");
+app.use(express.json());
+
+// Routes
+app.use("/api/auth", authRoutes);
+app.get("/api/test", protect, (req, res) => {
+    res.json({ message: "Protected route accessed", user: req.user });
+});
 
 app.use(cors({
     origin: "*", // later restrict
