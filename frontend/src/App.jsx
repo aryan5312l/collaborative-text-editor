@@ -3,6 +3,7 @@ import Editor from "./pages/Editor";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
@@ -13,11 +14,19 @@ function App() {
         <Route path="/signup" element={<Signup />} />
 
 
-        <Route 
-          path="/doc/:id" 
+        <Route
+          path="/doc/:id"
           element={
             <ProtectedRoute>
               <Editor />
+            </ProtectedRoute>
+          } />
+
+          <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
             </ProtectedRoute>
           } />
       </Routes>

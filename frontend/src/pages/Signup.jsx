@@ -25,7 +25,7 @@ export default function Signup() {
             setToken(data.token);
             socket.auth = { token: data.token };
             socket.connect();
-            navigate("/doc/1");
+            navigate("/dashboard");
         } else {
             setError(data.message);
         }

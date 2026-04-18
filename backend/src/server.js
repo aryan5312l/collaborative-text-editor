@@ -6,6 +6,7 @@ const path = require("path");
 const connectDB = require("./config/db");
 connectDB();
 const authRoutes = require("./routes/authRoutes");
+const documentRoutes = require("./routes/documentRoutes");
 const app = express()
 
 const { protect } = require("./middleware/authMiddleware");
@@ -18,6 +19,7 @@ app.use(cors({
 }));
 
 // Routes
+app.use("/api/docs", documentRoutes);
 app.use("/api/auth", authRoutes);
 
 const server = http.createServer(app)

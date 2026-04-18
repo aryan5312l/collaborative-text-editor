@@ -48,11 +48,17 @@ function initSocket(server) {
             
             socket.join(docId);
             console.log(docId);
-            const document = await Document.findOneAndUpdate(
-                { docId },
-                { $setOnInsert: { docId, content: "", history: [] } },
-                { upsert: true, returnDocument: "after" }
-            );
+            // const document = await Document.findOneAndUpdate(
+            //     { docId },
+            //     { $setOnInsert: { docId, content: "", history: [] } },
+            //     { upsert: true, returnDocument: "after" }
+            // );
+
+            const document = await Document.findOne({ docId });
+
+            if(document?.userId?.toString() !== socket.user._id.toString()) {
+                return;
+            }
 
             if (!latestContent[docId]) {
                 latestContent[docId] = document.content;

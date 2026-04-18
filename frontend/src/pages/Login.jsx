@@ -28,7 +28,7 @@ export default function Login() {
             socket.auth = { token: data.token };
             socket.connect();
 
-            navigate("/doc/1");
+            navigate("/dashboard");
         } else {
             setError(data.message);
             console.error("Login failed:", data.message);

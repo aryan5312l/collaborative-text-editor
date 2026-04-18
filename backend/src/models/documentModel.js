@@ -10,10 +10,19 @@ const documentSchema = new mongoose.Schema({
         type: String,
         default: ""
     },
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+    },
+    title: {
+        type: String,
+        default: "Untitled Document"
+    },
     history: {
         type: Array,
         default: []
     }
-});
+}, {timestamps: true});
 
 module.exports = mongoose.model("Document", documentSchema);
