@@ -21,12 +21,12 @@ function initSocket(server) {
         try {
             const token = socket.handshake.auth.token;
 
-            if(!token) {
+            if (!token) {
                 return next(new Error("Authentication error"));
             }
 
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            
+
             const user = await User.findById(decoded.id).select("-password");
 
             if (!user) {
@@ -45,7 +45,7 @@ function initSocket(server) {
 
         //Join document room
         socket.on("join-document", async (docId) => {
-            
+
             socket.join(docId);
             console.log(docId);
             // const document = await Document.findOneAndUpdate(
@@ -55,10 +55,17 @@ function initSocket(server) {
             // );
 
             const document = await Document.findOne({ docId });
+            if (!document) return;
 
-            if(document?.userId?.toString() !== socket.user._id.toString()) {
-                return;
+            const isOwner = document.userId.toString() === socket.user._id.toString();
+
+            const isShared = document.sharedWith.some(id => id.toString() === socket.user._id.toString());
+
+            if (!isOwner && !isShared) {
+                return socket.emit("error", "Not authorized to access this document");
             }
+
+
 
             if (!latestContent[docId]) {
                 latestContent[docId] = document.content;
@@ -119,11 +126,21 @@ function initSocket(server) {
 
         //Receive operation from client
         socket.on("send-operation", async ({ docId, operation, cursor }) => {
-
+            let document = await Document.findOne({ docId });
             if (!latestContent[docId]) {
-                const doc = await Document.findOne({ docId });
-                latestContent[docId] = doc?.content || "";
+                latestContent[docId] = document?.content || "";
             }
+
+            const isOwner = document.userId.toString() === socket.user._id.toString();
+
+            const sharedUser = document.sharedWith.find(
+                u => u.userId.toString() === socket.user._id.toString()
+            );
+
+            const canEdit =
+                isOwner || (sharedUser && sharedUser.permission === "write");
+
+            if (!canEdit) return; // block edits
 
             // Apply operation
             latestContent[docId] = applyOperation(latestContent[docId], operation);

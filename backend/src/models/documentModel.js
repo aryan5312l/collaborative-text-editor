@@ -22,7 +22,20 @@ const documentSchema = new mongoose.Schema({
     history: {
         type: Array,
         default: []
-    }
+    },
+    sharedWith: [
+        {
+            userId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User"
+            },
+            permission: {
+                type: String,
+                enum: ["read", "write"],
+                default: "read"
+            }
+        }
+    ]
 }, {timestamps: true});
 
 module.exports = mongoose.model("Document", documentSchema);

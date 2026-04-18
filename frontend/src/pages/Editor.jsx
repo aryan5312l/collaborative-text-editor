@@ -10,6 +10,7 @@ export default function Editor() {
     const { id: docId } = useParams();
     const [content, setContent] = useState("");
     const [cursors, setCursors] = useState({});
+    
 
     const undoStackRef = useRef([]);
     const redoStackRef = useRef([]);

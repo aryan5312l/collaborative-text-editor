@@ -1,5 +1,6 @@
 const Document = require("../models/documentModel");
 const { v4: uuidv4 } = require("uuid");
+const User = require("../models/userModel");
 
 //Create new document
 const createDocument = async (req, res) => {
@@ -41,4 +42,67 @@ const deleteDocument = async (req, res) => {
     }
 };
 
-module.exports = {createDocument, deleteDocument, getDocument}
+const updateTitle = async (req, res) => {
+    try {
+        const { title } = req.body;
+        const { id } = req.params;
+
+        const doc = await Document.findOne({docId: id});
+
+        if(!doc) {
+            return res.status(404).json({ message: "Document not found" });
+        }
+
+        //only owner can update title
+        if(doc.userId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "Not authorized" });
+        }
+
+        doc.title = title;
+        await doc.save();
+
+        res.json(doc);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+const shareDocument = async (req, res) => {
+    try {
+        const { email, permission } = req.body;
+        const { id } = req.params;
+
+        const doc = await Document.findOne({docId: id});
+
+        if(!doc) {
+            return res.status(404).json({ message: "Document not found" });
+        }
+
+        //only owner can share
+        if(doc.userId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "Not authorized" });
+        }
+
+        const userToShare = await User.findOne({email});
+
+        if(!userToShare) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Check if already shared
+        const alreadyShared = doc.sharedWith.find(s => s.userId.toString() === userToShare._id.toString());
+
+        if(alreadyShared) {
+            alreadyShared.permission = permission; // Update permission if already shared
+        } else {
+            doc.sharedWith.push({ userId: userToShare._id, permission });
+        }
+
+        await doc.save();
+        res.json({message: `Document shared with ${email} with ${permission} permission`});
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = {createDocument, deleteDocument, getDocument, updateTitle, shareDocument}
