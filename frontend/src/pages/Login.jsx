@@ -24,6 +24,8 @@ export default function Login() {
         if (res.ok) {
             console.log("Login successful, token:", data.token);
             setToken(data.token);
+            localStorage.setItem("user", JSON.stringify(data));
+
 
             socket.auth = { token: data.token };
             socket.connect();

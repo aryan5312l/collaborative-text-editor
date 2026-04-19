@@ -21,9 +21,14 @@ const createDocument = async (req, res) => {
 //Get My Documents
 const getDocument = async (req, res) => {
     try {
-        const docs = await Document.find({userId: req.user._id}).sort({createdAt: -1});
+        const ownedDocs = await Document.find({ userId: req.user._id });
 
-        res.json(docs);
+        const sharedDocs = await Document.find({
+            "sharedWith.userId": req.user._id
+        });
+        
+        res.json({ ownedDocs, sharedDocs });
+
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

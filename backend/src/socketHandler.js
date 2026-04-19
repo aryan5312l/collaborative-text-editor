@@ -55,23 +55,26 @@ function initSocket(server) {
             // );
 
             const document = await Document.findOne({ docId });
-            if (!document) return;
+            if (!document) {
+                console.error("Document not found:", docId);
+                return;
+            }
 
-            const isOwner = document.userId.toString() === socket.user._id.toString();
+            const isOwner = document?.userId?.toString() === socket.user._id.toString();
 
-            const isShared = document.sharedWith.some(id => id.toString() === socket.user._id.toString());
+            const isShared = document?.sharedWith.some(
+                u => u.userId.toString() === socket.user._id.toString()
+            );
 
             if (!isOwner && !isShared) {
                 return socket.emit("error", "Not authorized to access this document");
             }
 
-
-
             if (!latestContent[docId]) {
                 latestContent[docId] = document.content;
             }
 
-            socket.emit("load-document", latestContent[docId]);
+            socket.emit("load-document", latestContent[docId] || document.content);
         });
 
         //Undo Handle
@@ -131,7 +134,7 @@ function initSocket(server) {
                 latestContent[docId] = document?.content || "";
             }
 
-            const isOwner = document.userId.toString() === socket.user._id.toString();
+            const isOwner = document?.userId?.toString() === socket.user._id.toString();
 
             const sharedUser = document.sharedWith.find(
                 u => u.userId.toString() === socket.user._id.toString()

@@ -3,10 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { getToken } from "../utils/auth";
 
 export default function Dashboard() {
-    const [documents, setDocuments] = useState([]);
+    const [ownedDocs, setOwnedDocs] = useState([]);
+    const [sharedDocs, setSharedDocs] = useState([]);
     const navigate = useNavigate();
     const [titles, setTitles] = useState({});
     const [emails, setEmails] = useState({});
+
+    const user = JSON.parse(localStorage.getItem("user"));
 
     const fetchDocuments = async () => {
         const res = await fetch("http://localhost:5000/api/docs", {
@@ -17,7 +20,8 @@ export default function Dashboard() {
 
         const data = await res.json();
 
-        setDocuments(data);
+        setOwnedDocs(data.ownedDocs || []);
+        setSharedDocs(data.sharedDocs || []);
     };
 
     const createDocument = async () => {
@@ -47,7 +51,7 @@ export default function Dashboard() {
     const updateTitle = async (docId) => {
         const title = titles[docId];
 
-        if(!title) return;
+        if (!title) return;
 
         await fetch(`http://localhost:5000/api/docs/${docId}/title`, {
             method: "PUT",
@@ -64,7 +68,7 @@ export default function Dashboard() {
     const shareDocument = async (docId) => {
         const email = emails[docId];
 
-        if(!email) return;
+        if (!email) return;
 
         await fetch(`http://localhost:5000/api/docs/${docId}/share`, {
             method: "POST",
@@ -74,6 +78,7 @@ export default function Dashboard() {
             },
             body: JSON.stringify({ email, permission: "write" })
         });
+        fetchDocuments();
 
         alert("Document shared successfully");
     };
@@ -86,37 +91,67 @@ export default function Dashboard() {
     return (
         <div>
             <h2>My Documents</h2>
+
             <button onClick={createDocument}>Create New Document</button>
 
-            {documents.map((doc) => (
+            {ownedDocs.map((doc) => (
                 <div key={doc._id}>
-                    <h3>{doc.title}</h3> <p>{new Date(doc.createdAt).toLocaleDateString()}</p>
+                    <h3>{doc.title}</h3>
+                    <p>{new Date(doc.createdAt).toLocaleDateString()}</p>
+
                     <button onClick={() => navigate(`/doc/${doc.docId}`)}>Edit</button>
                     <button onClick={() => deleteDocument(doc.docId)}>Delete</button>
+
+                    {/* Title update */}
                     <input
                         type="text"
                         placeholder="New Title"
                         value={titles[doc.docId] || ""}
-                        onChange={(e) => 
-                            setTitles(prev => ({ 
-                                ...prev, 
-                                [doc.docId]: e.target.value 
+                        onChange={(e) =>
+                            setTitles(prev => ({
+                                ...prev,
+                                [doc.docId]: e.target.value
                             }))
                         }
                     />
                     <button onClick={() => updateTitle(doc.docId)}>Update Title</button>
+
+                    {/* Share */}
                     <input
                         type="email"
                         placeholder="Share with email"
                         value={emails[doc.docId] || ""}
-                        onChange={(e) => 
-                            setEmails(prev => ({ 
-                                ...prev, 
-                                [doc.docId]: e.target.value 
+                        onChange={(e) =>
+                            setEmails(prev => ({
+                                ...prev,
+                                [doc.docId]: e.target.value
                             }))
                         }
                     />
-                    <button onClick={() => shareDocument(doc.docId)}>Share Document</button>
+                    <button onClick={() => shareDocument(doc.docId)}>Share</button>
+                </div>
+            ))}
+
+            <h2>Shared With Me</h2>
+
+            {sharedDocs.map((doc) => (
+                <div key={doc._id}>
+                    <h3>{doc.title}</h3>
+                    <p>{new Date(doc.createdAt).toLocaleDateString()}</p>
+
+                    <button onClick={() => navigate(`/doc/${doc.docId}`)}>
+                        Open
+                    </button>
+
+                    {/* Show permission */}
+                    <p>
+                        Permission:{" "}
+                        {
+                            doc.sharedWith.find(
+                                u => u.userId === user?._id
+                )?.permission || "read"
+                        }
+                    </p>
                 </div>
             ))}
         </div>
