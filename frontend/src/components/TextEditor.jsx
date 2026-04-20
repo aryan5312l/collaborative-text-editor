@@ -3,15 +3,16 @@ import { socket } from "../socket/socket";
 import { useRef } from "react";
 import { applyOperation } from "../utils/operationUtils";
 
-export default function TextEditor({ content, setContent, docId, cursors, undoStackRef, redoStackRef }) {
+export default function TextEditor({ content, setContent, docId, cursors, undoStackRef, redoStackRef, permission, users }) {
     const mirrorRef = useRef(null);
 
     const handleChange = (e) => {
+        if (permission === "read") return;
         const newText = e.target.value;
         const oldText = content || "";
         const cursorPos = e.target.selectionStart;
 
-        
+
 
         let start = 0;
 
@@ -108,25 +109,42 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
     const renderCursors = () => {
         if (!cursors) return null;
 
-        const myId = socket.id;
+        const currentUserId = socket.user?._id?.toString();
 
         return Object.entries(cursors).map(([userId, position]) => {
-            if (userId === myId) return null;   // Don't render own cursor
+            if (userId === currentUserId) return null;   // Don't render own cursor
 
             const { top, left } = getCursorCoordinates(position);
 
+            const user = users?.find(u => u.userId === userId);
+
             return (
-                <div
-                    key={userId}
-                    style={{
-                        position: "absolute",
-                        left,
-                        top,
-                        width: "2px",
-                        height: "20px",
-                        backgroundColor: "blue"
-                    }}
-                />
+                <>
+                    <div
+                        style={{
+                            position: "absolute",
+                            left,
+                            top,
+                            width: "2px",
+                            height: "20px",
+                            backgroundColor: user?.color || "blue"
+                        }}
+                    />
+                    <div
+                        style={{
+                            position: "absolute",
+                            left,
+                            top: top - 20,
+                            background: user?.color || "blue",
+                            color: "#fff",
+                            fontSize: "10px",
+                            padding: "2px 4px",
+                            borderRadius: "4px"
+                        }}
+                    >
+                        {user?.name || "Unknown"}
+                    </div>
+                </>
             );
         });
     };
@@ -162,11 +180,11 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
 
         setContent(newContent);
 
-        socket.emit("send-operation", { 
+        socket.emit("send-operation", {
             docId,
             operation: originalOp,
             cursor: null
-         });
+        });
     };
 
 
@@ -175,9 +193,10 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
             <div style={{ position: "relative", width: "600px" }}>
                 <textarea
                     value={content}
-                    onChange={handleChange}
+                    onChange={permission === "read" ? undefined : handleChange}
                     onSelect={handleSelect}
                     onClick={handleSelect}
+                    readOnly={permission === "read"}
                     rows={20}
                     cols={80}
                     style={{

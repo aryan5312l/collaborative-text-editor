@@ -6,6 +6,7 @@ const User = require("./models/userModel");
 const saveTimers = {};
 const latestContent = {};
 const pendingOps = {};
+const docUsers = {};
 
 
 function initSocket(server) {
@@ -45,6 +46,7 @@ function initSocket(server) {
 
         //Join document room
         socket.on("join-document", async (docId) => {
+            let permission = "read";
 
             socket.join(docId);
             console.log(docId);
@@ -70,11 +72,45 @@ function initSocket(server) {
                 return socket.emit("error", "Not authorized to access this document");
             }
 
+            //track users
+            if(!docUsers[docId]) docUsers[docId] = [];
+
+            const already = docUsers[docId].find(
+                (u) => u.userId === socket.user._id.toString()
+            );
+
+            if(!already) {
+                docUsers[docId].push({
+                    userId: socket.user._id.toString(),
+                    name: socket.user.name,
+                    color: getRandomColor()
+                });
+            }
+
+            //send users in doc to clients
+            io.to(docId).emit("users-in-doc", docUsers[docId]);
+
+            socket.docId = docId; //store for disconnection
+
+            if(isOwner) permission = "owner";
+            else {
+                const sharedUser = document.sharedWith.find(
+                    u => u.userId.toString() === socket.user._id.toString()
+                );
+                if (sharedUser) {
+                    permission = sharedUser.permission;
+                }
+            }
+
+
             if (!latestContent[docId]) {
                 latestContent[docId] = document.content;
             }
 
-            socket.emit("load-document", latestContent[docId] || document.content);
+            socket.emit("load-document",{
+                content: latestContent[docId] || document.content,
+                permission
+            });
         });
 
         //Undo Handle
@@ -121,7 +157,7 @@ function initSocket(server) {
         //Cursor Move Handle
         socket.on("cursor-move", ({ docId, position }) => {
             socket.to(docId).emit("receive-cursor-position", {
-                userId: socket.id,
+                userId: socket.user._id.toString(),
                 position
             });
         });
@@ -184,6 +220,15 @@ function initSocket(server) {
 
 
         socket.on("disconnect", () => {
+            const docId = socket.docId;
+
+            if(!docId || !docUsers[docId]) return;
+
+            docUsers[docId] = docUsers[docId].filter(
+                u => u.userId !== socket.user._id.toString()
+            );
+
+            io.to(docId).emit("users-in-doc", docUsers[docId]);
             console.log("User disconnected", socket.user._id, socket.user.name);
 
             io.emit("user-disconnected", { userId: socket.id });
@@ -191,4 +236,14 @@ function initSocket(server) {
     })
 }
 
-module.exports = { initSocket };
+function getRandomColor(){
+    const colors = [
+        "#FF5733", "#33FF57", "#3357FF",
+        "#FF33A8", "#33FFF3", "#F3FF33",
+        "#8D33FF", "#FF8D33"
+    ]
+
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+module.exports = { initSocket, getRandomColor };
