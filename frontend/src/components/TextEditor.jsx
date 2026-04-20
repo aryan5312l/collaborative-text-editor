@@ -1,22 +1,23 @@
 import { invertOperation } from "../utils/operationUtils";
 import { socket } from "../socket/socket";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { applyOperation } from "../utils/operationUtils";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function TextEditor({ content, setContent, docId, cursors, undoStackRef, redoStackRef, permission, users }) {
     const mirrorRef = useRef(null);
+    const textareaRef = useRef(null);
+    const isReadOnly = permission === "read";
 
     const handleChange = (e) => {
-        if (permission === "read") return;
+        if (isReadOnly) return;
+        
         const newText = e.target.value;
         const oldText = content || "";
         const cursorPos = e.target.selectionStart;
 
-
-
         let start = 0;
 
-        // Find first difference
         while (
             start < oldText.length &&
             start < newText.length &&
@@ -29,7 +30,6 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
 
         let operation = null;
 
-        // INSERT
         if (newText.length > oldText.length) {
             const insertedText = newText.slice(start, newText.length - (oldText.length - start));
             if (!insertedText) return;
@@ -39,10 +39,7 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
                 position: start,
                 text: insertedText
             };
-        }
-
-        // DELETE
-        else {
+        } else {
             const deleteLength = oldText.length - newText.length;
             if (deleteLength === 0) return;
 
@@ -53,20 +50,16 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
             };
         }
 
-        //if(!operation) return;
-
         const inverseOp = invertOperation(oldText, operation);
 
-        //Store both original and inverse in undo stack
         undoStackRef.current.push({
             original: operation,
             inverse: inverseOp
         });
-        redoStackRef.current = []; // Clear redo stack on new operation
+        redoStackRef.current = [];
 
         setContent(newText);
 
-        //Send both cursor and operation
         socket.emit("send-operation", {
             docId,
             operation,
@@ -76,8 +69,22 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
 
     const handleSelect = (e) => {
         const cursorPos = e.target.selectionStart;
-
         socket.emit("cursor-move", { docId, position: cursorPos });
+    };
+
+    const handleKeyDown = (e) => {
+        if (isReadOnly) return;
+        
+        // Ctrl+Z for undo
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            handleUndo();
+        }
+        // Ctrl+Y or Ctrl+Shift+Z for redo
+        else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+            e.preventDefault();
+            handleRedo();
+        }
     };
 
     function getCursorCoordinates(position) {
@@ -86,7 +93,6 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
 
         const textBefore = content.slice(0, position);
 
-        //Insert text + a marker
         mirror.innerHTML =
             textBefore
                 .replace(/&/g, "&amp;")
@@ -109,42 +115,53 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
     const renderCursors = () => {
         if (!cursors) return null;
 
-        const currentUserId = socket.user?._id?.toString();
+        const currentUserId = socket.id;
 
         return Object.entries(cursors).map(([userId, position]) => {
-            if (userId === currentUserId) return null;   // Don't render own cursor
+            if (userId === currentUserId) return null;
 
             const { top, left } = getCursorCoordinates(position);
-
             const user = users?.find(u => u.userId === userId);
+            
+            if (!user) return null;
 
             return (
-                <>
-                    <div
+                <div key={userId}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
                         style={{
                             position: "absolute",
                             left,
                             top,
                             width: "2px",
                             height: "20px",
-                            backgroundColor: user?.color || "blue"
+                            backgroundColor: user.color,
+                            boxShadow: `0 0 4px ${user.color}`,
+                            pointerEvents: "none"
                         }}
                     />
-                    <div
+                    <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
                         style={{
                             position: "absolute",
                             left,
-                            top: top - 20,
-                            background: user?.color || "blue",
+                            top: top - 22,
+                            backgroundColor: user.color,
                             color: "#fff",
                             fontSize: "10px",
-                            padding: "2px 4px",
-                            borderRadius: "4px"
+                            fontFamily: "monospace",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                            whiteSpace: "nowrap",
+                            pointerEvents: "none",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
                         }}
                     >
-                        {user?.name || "Unknown"}
-                    </div>
-                </>
+                        {user.name}
+                    </motion.div>
+                </div>
             );
         });
     };
@@ -187,28 +204,33 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
         });
     };
 
-
     return (
-        <div>
-            <div style={{ position: "relative", width: "600px" }}>
+        <div className="relative">
+            <div style={{ position: "relative" }} className="w-full">
                 <textarea
+                    ref={textareaRef}
                     value={content}
-                    onChange={permission === "read" ? undefined : handleChange}
+                    onChange={handleChange}
                     onSelect={handleSelect}
                     onClick={handleSelect}
-                    readOnly={permission === "read"}
-                    rows={20}
-                    cols={80}
+                    onKeyDown={handleKeyDown}
+                    readOnly={isReadOnly}
+                    className="w-full font-mono outline-none resize-none"
                     style={{
-                        width: "100%",
-                        height: "300px",
-                        fontFamily: "monospace",
-                        fontSize: "16px",
-                        lineHeight: "20px",
-                        padding: "10px"
+                        backgroundColor: "#0b1018",
+                        color: "#ccd6f6",
+                        fontSize: "15px",
+                        lineHeight: "24px",
+                        padding: "20px",
+                        minHeight: "500px",
+                        fontFamily: "'Fira Code', 'Cascadia Code', 'Courier New', monospace",
+                        cursor: isReadOnly ? "default" : "text"
                     }}
+                    
+                    placeholder={isReadOnly ? "view only mode — you can't edit this document" : "start typing... your collaborators will see changes instantly"}
                 />
 
+                {/* Hidden mirror for cursor positioning */}
                 <div
                     ref={mirrorRef}
                     style={{
@@ -218,15 +240,16 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
                         visibility: "hidden",
                         whiteSpace: "pre-wrap",
                         wordWrap: "break-word",
-                        fontFamily: "monospace",
-                        fontSize: "16px",
-                        lineHeight: "20px",
-                        padding: "10px",
+                        fontFamily: "'Fira Code', 'Cascadia Code', 'Courier New', monospace",
+                        fontSize: "15px",
+                        lineHeight: "24px",
+                        padding: "20px",
                         width: "100%",
+                        pointerEvents: "none"
                     }}
                 />
 
-                {/* Overlay */}
+                {/* Cursors overlay */}
                 <div
                     style={{
                         position: "absolute",
@@ -241,9 +264,75 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
                 </div>
             </div>
 
-            <button onClick={handleUndo}>Undo</button>
-            <button onClick={handleRedo}>Redo</button>
-        </div>
+            {/* Undo/Redo toolbar */}
+            {!isReadOnly && (
+                <div className="absolute bottom-6 right-6 flex gap-2">
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleUndo}
+                        className="px-3 py-2 rounded-lg font-mono text-xs transition-all flex items-center gap-1"
+                        style={{
+                            backgroundColor: "rgba(15, 20, 32, 0.9)",
+                            border: "1px solid rgba(100, 255, 218, 0.2)",
+                            color: "#64ffda",
+                            backdropFilter: "blur(8px)"
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "rgba(100, 255, 218, 0.1)";
+                            e.currentTarget.style.borderColor = "#64ffda";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "rgba(15, 20, 32, 0.9)";
+                            e.currentTarget.style.borderColor = "rgba(100, 255, 218, 0.2)";
+                        }}
+                        title="Undo (Ctrl+Z)"
+                    >
+                        <span>↩️</span>
+                        <span>undo</span>
+                    </motion.button>
+                    
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleRedo}
+                        className="px-3 py-2 rounded-lg font-mono text-xs transition-all flex items-center gap-1"
+                        style={{
+                            backgroundColor: "rgba(15, 20, 32, 0.9)",
+                            border: "1px solid rgba(100, 255, 218, 0.2)",
+                            color: "#64ffda",
+                            backdropFilter: "blur(8px)"
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "rgba(100, 255, 218, 0.1)";
+                            e.currentTarget.style.borderColor = "#64ffda";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "rgba(15, 20, 32, 0.9)";
+                            e.currentTarget.style.borderColor = "rgba(100, 255, 218, 0.2)";
+                        }}
+                        title="Redo (Ctrl+Y)"
+                    >
+                        <span>↪️</span>
+                        <span>redo</span>
+                    </motion.button>
+                </div>
+            )}
 
+            {/* Read-only overlay message */}
+            {isReadOnly && (
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                    <div className="px-4 py-2 rounded-lg backdrop-blur-sm"
+                        style={{
+                            backgroundColor: "rgba(10, 15, 26, 0.8)",
+                            border: "1px solid rgba(203, 75, 22, 0.3)",
+                            color: "#cb4b16"
+                        }}
+                    >
+                        <p className="text-sm font-mono">🔒 view only — you can't edit this document</p>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
