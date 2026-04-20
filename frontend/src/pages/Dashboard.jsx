@@ -11,6 +11,7 @@ export default function Dashboard() {
     const [activeDocId, setActiveDocId] = useState(null);
     const [activeShareId, setActiveShareId] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
+    const [permissions, setPermissions] = useState({});
     const navigate = useNavigate();
 
     const user = JSON.parse(localStorage.getItem("user"));
@@ -51,7 +52,7 @@ export default function Dashboard() {
 
     const deleteDocument = async (docId) => {
         if (!confirm("delete this document? this action cannot be undone.")) return;
-        
+
         try {
             await fetch(`http://localhost:5000/api/docs/${docId}`, {
                 method: "DELETE",
@@ -90,6 +91,8 @@ export default function Dashboard() {
         const email = emails[docId];
         if (!email || email.trim() === "") return;
 
+        const permission = permissions[docId] || "write";
+
         try {
             await fetch(`http://localhost:5000/api/docs/${docId}/share`, {
                 method: "POST",
@@ -97,7 +100,7 @@ export default function Dashboard() {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${getToken()}`
                 },
-                body: JSON.stringify({ email, permission: "write" })
+                body: JSON.stringify({ email, permission })
             });
             fetchDocuments();
             setEmails(prev => ({ ...prev, [docId]: "" }));
@@ -136,7 +139,7 @@ export default function Dashboard() {
             >
                 <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                        <h1 
+                        <h1
                             className="text-xl font-mono font-bold tracking-tight cursor-pointer"
                             style={{ color: "#64ffda" }}
                             onClick={() => navigate("/")}
@@ -152,7 +155,7 @@ export default function Dashboard() {
                             ~/dashboard
                         </span>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
                             style={{
@@ -200,7 +203,7 @@ export default function Dashboard() {
                             {ownedDocs.length} owned · {sharedDocs.length} shared
                         </p>
                     </div>
-                    
+
                     <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -244,7 +247,7 @@ export default function Dashboard() {
                         <span>📄</span> owned documents
                         <span className="text-xs font-mono" style={{ color: "#586e75" }}>({ownedDocs.length})</span>
                     </h3>
-                    
+
                     {ownedDocs.length === 0 ? (
                         <div className="text-center py-12 rounded-xl border border-dashed"
                             style={{
@@ -299,7 +302,7 @@ export default function Dashboard() {
                                                 created {new Date(doc.createdAt).toLocaleDateString()}
                                             </p>
                                         </div>
-                                        
+
                                         <div className="flex gap-2 flex-wrap">
                                             <motion.button
                                                 whileHover={{ scale: 1.02 }}
@@ -320,7 +323,7 @@ export default function Dashboard() {
                                             >
                                                 edit
                                             </motion.button>
-                                            
+
                                             <motion.button
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
@@ -340,7 +343,7 @@ export default function Dashboard() {
                                             >
                                                 delete
                                             </motion.button>
-                                            
+
                                             <motion.button
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
@@ -354,7 +357,7 @@ export default function Dashboard() {
                                             >
                                                 rename
                                             </motion.button>
-                                            
+
                                             <motion.button
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
@@ -370,7 +373,7 @@ export default function Dashboard() {
                                             </motion.button>
                                         </div>
                                     </div>
-                                    
+
                                     {/* Rename Input */}
                                     <AnimatePresence>
                                         {activeDocId === doc.docId && (
@@ -414,7 +417,7 @@ export default function Dashboard() {
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
-                                    
+
                                     {/* Share Input */}
                                     <AnimatePresence>
                                         {activeShareId === doc.docId && (
@@ -425,26 +428,46 @@ export default function Dashboard() {
                                                 className="mt-4 pt-4 border-t"
                                                 style={{ borderTopColor: "rgba(100, 255, 218, 0.08)" }}
                                             >
-                                                <div className="flex gap-2">
+                                                <div className="flex gap-2 items-center">
                                                     <input
                                                         type="email"
                                                         placeholder="collaborator@email.com"
                                                         value={emails[doc.docId] || ""}
-                                                        onChange={(e) => setEmails(prev => ({ ...prev, [doc.docId]: e.target.value }))}
-                                                        onKeyPress={(e) => e.key === "Enter" && shareDocument(doc.docId)}
-                                                        className="flex-1 px-3 py-2 rounded-lg font-mono text-sm outline-none transition-all"
+                                                        onChange={(e) =>
+                                                            setEmails(prev => ({
+                                                                ...prev,
+                                                                [doc.docId]: e.target.value
+                                                            }))
+                                                        }
+                                                        className="flex-1 px-3 py-2 rounded-lg font-mono text-sm"
                                                         style={{
                                                             backgroundColor: "rgba(10, 15, 26, 0.8)",
                                                             border: "1px solid rgba(100, 255, 218, 0.15)",
                                                             color: "#ccd6f6"
                                                         }}
-                                                        onFocus={(e) => e.currentTarget.style.borderColor = "#64ffda"}
-                                                        onBlur={(e) => e.currentTarget.style.borderColor = "rgba(100, 255, 218, 0.15)"}
-                                                        autoFocus
                                                     />
-                                                    <motion.button
-                                                        whileHover={{ scale: 1.02 }}
-                                                        whileTap={{ scale: 0.98 }}
+
+                                                    {/* 🔥 NEW: PERMISSION SELECT */}
+                                                    <select
+                                                        value={permissions[doc.docId] || "write"}
+                                                        onChange={(e) =>
+                                                            setPermissions(prev => ({
+                                                                ...prev,
+                                                                [doc.docId]: e.target.value
+                                                            }))
+                                                        }
+                                                        className="px-3 py-2 rounded-lg font-mono text-sm"
+                                                        style={{
+                                                            backgroundColor: "rgba(10, 15, 26, 0.8)",
+                                                            border: "1px solid rgba(100, 255, 218, 0.15)",
+                                                            color: "#ccd6f6"
+                                                        }}
+                                                    >
+                                                        <option value="read">read</option>
+                                                        <option value="write">write</option>
+                                                    </select>
+
+                                                    <button
                                                         onClick={() => shareDocument(doc.docId)}
                                                         className="px-4 py-2 rounded-lg font-mono text-xs"
                                                         style={{
@@ -453,10 +476,10 @@ export default function Dashboard() {
                                                         }}
                                                     >
                                                         share
-                                                    </motion.button>
+                                                    </button>
                                                 </div>
                                                 <p className="text-xs font-mono mt-2" style={{ color: "#586e75" }}>
-                                                    collaborator will get write access
+                                                    access: {permissions[doc.docId] || "write"}
                                                 </p>
                                             </motion.div>
                                         )}
@@ -476,7 +499,7 @@ export default function Dashboard() {
                             <span>🔗</span> shared with me
                             <span className="text-xs font-mono" style={{ color: "#586e75" }}>({sharedDocs.length})</span>
                         </h3>
-                        
+
                         <div className="grid gap-4">
                             {sharedDocs.map((doc, idx) => (
                                 <motion.div
@@ -513,11 +536,11 @@ export default function Dashboard() {
                                                 </p>
                                                 <span className="text-xs font-mono px-2 py-0.5 rounded"
                                                     style={{
-                                                        backgroundColor: doc.sharedWith.find(u => u.userId === user?._id)?.permission === "write" 
-                                                            ? "rgba(100, 255, 218, 0.08)" 
+                                                        backgroundColor: doc.sharedWith.find(u => u.userId === user?._id)?.permission === "write"
+                                                            ? "rgba(100, 255, 218, 0.08)"
                                                             : "rgba(229, 181, 103, 0.08)",
-                                                        color: doc.sharedWith.find(u => u.userId === user?._id)?.permission === "write" 
-                                                            ? "#64ffda" 
+                                                        color: doc.sharedWith.find(u => u.userId === user?._id)?.permission === "write"
+                                                            ? "#64ffda"
                                                             : "#e5b567"
                                                     }}
                                                 >
@@ -525,7 +548,7 @@ export default function Dashboard() {
                                                 </span>
                                             </div>
                                         </div>
-                                        
+
                                         <motion.button
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.98 }}
