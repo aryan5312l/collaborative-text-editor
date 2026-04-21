@@ -16,6 +16,9 @@ export default function Editor() {
     const [users, setUsers] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
     const navigate = useNavigate();
+    
+    const params = new URLSearchParams(window.location.search);
+    const shareToken = params.get("token");
 
     const undoStackRef = useRef([]);
     const redoStackRef = useRef([]);
@@ -28,7 +31,11 @@ export default function Editor() {
             return;
         }
 
-        socket.auth = { token };
+        socket.auth = { 
+            token,
+            tokenParam: shareToken
+        };
+        
         socket.connect();
         socket.emit("join-document", docId );
 
@@ -72,7 +79,7 @@ export default function Editor() {
                 delete newCursors[userId];
                 return newCursors;
             });
-            
+
         });
 
         socket.on("connect_error", (err) => {

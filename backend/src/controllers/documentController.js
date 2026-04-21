@@ -1,6 +1,7 @@
 const Document = require("../models/documentModel");
 const { v4: uuidv4 } = require("uuid");
 const User = require("../models/userModel");
+const crypto = require("crypto");
 
 //Create new document
 const createDocument = async (req, res) => {
@@ -110,4 +111,38 @@ const shareDocument = async (req, res) => {
     }
 };
 
-module.exports = {createDocument, deleteDocument, getDocument, updateTitle, shareDocument}
+const generateShareLink = async (req, res) => {
+    try {
+        const {permission}  = req.body;
+        const { id } = req.params;
+
+        const doc = await Document.findOne({docId: id});
+
+        if(!doc) {
+            return res.status(404).json({ message: "Document not found" });
+        }
+
+        //only owner can generate share link
+        if(doc.userId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "Not authorized" });
+        }
+
+        const token = crypto.randomBytes(16).toString("hex");
+
+        doc.shareLink = {
+            token,
+            permission: permission || "read"
+        };
+        await doc.save();
+
+        res.json({
+            link: `${process.env.FRONTEND_URL}/doc/${id}?token=${token}`,
+        })
+        console.log(doc.shareLink);
+
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = {createDocument, deleteDocument, getDocument, updateTitle, shareDocument, generateShareLink}

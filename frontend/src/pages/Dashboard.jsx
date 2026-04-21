@@ -111,6 +111,31 @@ export default function Dashboard() {
         }
     };
 
+    const generateLink = async (docId) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/docs/${docId}/share-link`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${getToken()}`
+                },
+                body: JSON.stringify({
+                    permission: permissions[docId] || "write"
+                })
+            });
+
+            const data = await res.json();
+            console.log(data);
+            navigator.clipboard.writeText(data.link);
+            alert("Share link copied to clipboard!");
+
+        } catch (err) {
+            console.error("Failed to generate share link:", err);
+            alert("Failed to generate share link. Please try again.");
+        }
+    };
+
+
     const handleLogout = () => {
         localStorage.removeItem("user");
         localStorage.removeItem("token");
@@ -476,6 +501,9 @@ export default function Dashboard() {
                                                         }}
                                                     >
                                                         share
+                                                    </button>
+                                                    <button onClick={() => generateLink(doc.docId)}>
+                                                        copy link
                                                     </button>
                                                 </div>
                                                 <p className="text-xs font-mono mt-2" style={{ color: "#586e75" }}>

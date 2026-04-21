@@ -47,6 +47,7 @@ function initSocket(server) {
         //Join document room
         socket.on("join-document", async (docId) => {
             let permission = "read";
+            const token = socket.handshake.auth.tokenParam;
 
             socket.join(docId);
             console.log(docId);
@@ -68,7 +69,11 @@ function initSocket(server) {
                 u => u.userId.toString() === socket.user._id.toString()
             );
 
-            if (!isOwner && !isShared) {
+            const hasLinkAccess = 
+                token &&
+                document.shareLink?.token === token;
+
+            if (!isOwner && !isShared && !hasLinkAccess) {
                 return socket.emit("error", "Not authorized to access this document");
             }
 
@@ -93,19 +98,22 @@ function initSocket(server) {
             socket.docId = docId; //store for disconnection
 
             if(isOwner) permission = "owner";
-            else {
+            else if(isShared) {
                 const sharedUser = document.sharedWith.find(
                     u => u.userId.toString() === socket.user._id.toString()
                 );
-                if (sharedUser) {
-                    permission = sharedUser.permission;
-                }
+                permission = sharedUser.permission;
             }
+            else if(hasLinkAccess) {
+                permission = document.shareLink.permission;
+            }
+
 
 
             if (!latestContent[docId]) {
                 latestContent[docId] = document.content;
             }
+            console.log("Token received:", socket.handshake.auth.tokenParam);
 
             socket.emit("load-document",{
                 content: latestContent[docId] || document.content,
@@ -176,8 +184,12 @@ function initSocket(server) {
                 u => u.userId.toString() === socket.user._id.toString()
             );
 
+            const hasLinkAccess = 
+                socket.handshake.auth.tokenParam &&
+                document.shareLink?.token === socket.handshake.auth.tokenParam;
+
             const canEdit =
-                isOwner || (sharedUser && sharedUser.permission === "write");
+                isOwner || (sharedUser && sharedUser.permission === "write") || (hasLinkAccess && document.shareLink?.permission === "write");
 
             if (!canEdit) return; // block edits
 

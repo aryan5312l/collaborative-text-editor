@@ -35,7 +35,14 @@ const documentSchema = new mongoose.Schema({
                 default: "read"
             }
         }
-    ]
+    ],
+    shareLink: {
+        token: String,
+        permission: {
+            type: String,
+            enum: ["read", "write"]
+        }
+    }
 }, {timestamps: true});
 
 module.exports = mongoose.model("Document", documentSchema);
