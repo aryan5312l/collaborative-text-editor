@@ -14,8 +14,10 @@ const { protect } = require("./middleware/authMiddleware");
 const cors = require("cors");
 app.use(express.json());
 
+const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
 app.use(cors({
-    origin: "*", // later restrict
+    origin: allowedOrigin,
+    credentials: true
 }));
 
 // Routes

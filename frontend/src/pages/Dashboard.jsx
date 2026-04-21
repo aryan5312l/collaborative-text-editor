@@ -16,9 +16,10 @@ export default function Dashboard() {
 
     const user = JSON.parse(localStorage.getItem("user"));
 
+    const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:5000" : "");
     const fetchDocuments = async () => {
         try {
-            const res = await fetch("http://localhost:5000/api/docs", {
+            const res = await fetch(`${API_BASE_URL}/api/docs`, {
                 headers: {
                     "Authorization": `Bearer ${getToken()}`
                 }
@@ -34,7 +35,7 @@ export default function Dashboard() {
     const createDocument = async () => {
         setIsCreating(true);
         try {
-            const res = await fetch("http://localhost:5000/api/docs", {
+            const res = await fetch(`${API_BASE_URL}/api/docs`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -54,7 +55,7 @@ export default function Dashboard() {
         if (!confirm("delete this document? this action cannot be undone.")) return;
 
         try {
-            await fetch(`http://localhost:5000/api/docs/${docId}`, {
+            await fetch(`${API_BASE_URL}/api/docs/${docId}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${getToken()}`
@@ -71,7 +72,7 @@ export default function Dashboard() {
         if (!title || title.trim() === "") return;
 
         try {
-            await fetch(`http://localhost:5000/api/docs/${docId}/title`, {
+            await fetch(`${API_BASE_URL}/api/docs/${docId}/title`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -94,7 +95,7 @@ export default function Dashboard() {
         const permission = permissions[docId] || "write";
 
         try {
-            await fetch(`http://localhost:5000/api/docs/${docId}/share`, {
+            await fetch(`${API_BASE_URL}/api/docs/${docId}/share`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -113,7 +114,7 @@ export default function Dashboard() {
 
     const generateLink = async (docId) => {
         try {
-            const res = await fetch(`http://localhost:5000/api/docs/${docId}/share-link`, {
+            const res = await fetch(`${API_BASE_URL}/api/docs/${docId}/share-link`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

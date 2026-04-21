@@ -12,9 +12,11 @@ const docUsers = {};
 function initSocket(server) {
     const { Server } = require("socket.io");
 
+    const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
     const io = new Server(server, {
         cors: {
-            origin: "*",
+            origin: allowedOrigin,
+            credentials: true
         }
     });
 
@@ -69,7 +71,7 @@ function initSocket(server) {
                 u => u.userId.toString() === socket.user._id.toString()
             );
 
-            const hasLinkAccess = 
+            const hasLinkAccess =
                 token &&
                 document.shareLink?.token === token;
 
@@ -78,13 +80,13 @@ function initSocket(server) {
             }
 
             //track users
-            if(!docUsers[docId]) docUsers[docId] = [];
+            if (!docUsers[docId]) docUsers[docId] = [];
 
             const already = docUsers[docId].find(
                 (u) => u.userId === socket.user._id.toString()
             );
 
-            if(!already) {
+            if (!already) {
                 docUsers[docId].push({
                     userId: socket.user._id.toString(),
                     name: socket.user.name,
@@ -97,14 +99,14 @@ function initSocket(server) {
 
             socket.docId = docId; //store for disconnection
 
-            if(isOwner) permission = "owner";
-            else if(isShared) {
+            if (isOwner) permission = "owner";
+            else if (isShared) {
                 const sharedUser = document.sharedWith.find(
                     u => u.userId.toString() === socket.user._id.toString()
                 );
                 permission = sharedUser.permission;
             }
-            else if(hasLinkAccess) {
+            else if (hasLinkAccess) {
                 permission = document.shareLink.permission;
             }
 
@@ -115,7 +117,7 @@ function initSocket(server) {
             }
             console.log("Token received:", socket.handshake.auth.tokenParam);
 
-            socket.emit("load-document",{
+            socket.emit("load-document", {
                 content: latestContent[docId] || document.content,
                 permission
             });
@@ -184,7 +186,7 @@ function initSocket(server) {
                 u => u.userId.toString() === socket.user._id.toString()
             );
 
-            const hasLinkAccess = 
+            const hasLinkAccess =
                 socket.handshake.auth.tokenParam &&
                 document.shareLink?.token === socket.handshake.auth.tokenParam;
 
@@ -234,7 +236,7 @@ function initSocket(server) {
         socket.on("disconnect", () => {
             const docId = socket.docId;
 
-            if(!docId || !docUsers[docId]) return;
+            if (!docId || !docUsers[docId]) return;
 
             docUsers[docId] = docUsers[docId].filter(
                 u => u.userId !== socket.user._id.toString()
@@ -248,7 +250,7 @@ function initSocket(server) {
     })
 }
 
-function getRandomColor(){
+function getRandomColor() {
     const colors = [
         "#FF5733", "#33FF57", "#3357FF",
         "#FF33A8", "#33FFF3", "#F3FF33",
