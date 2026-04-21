@@ -80,6 +80,8 @@ export default function Editor() {
                 return newCursors;
             });
 
+            setUsers((prev) => prev.filter(u => u.userId !== userId));
+
         });
 
         socket.on("connect_error", (err) => {
@@ -95,6 +97,7 @@ export default function Editor() {
         });
 
         return () => {
+            socket.emit("leave-document", docId);
             socket.off("connect");
             socket.off("load-document");
             socket.off("receive-operation");

@@ -231,6 +231,19 @@ function initSocket(server) {
             });
         });
 
+        //Leave document room
+        socket.on("leave-document", (docId) => {
+            if(!docUsers[docId]) return;
+
+            docUsers[docId] = docUsers[docId].filter(
+                u => u.userId !== socket.user._id.toString()
+            );
+
+            socket.leave(docId);
+            io.to(docId).emit("users-in-doc", docUsers[docId]);
+            console.log("User left document: ", socket.user._id, socket.user.name);
+        });
+
 
 
         socket.on("disconnect", () => {
@@ -245,7 +258,7 @@ function initSocket(server) {
             io.to(docId).emit("users-in-doc", docUsers[docId]);
             console.log("User disconnected", socket.user._id, socket.user.name);
 
-            io.emit("user-disconnected", { userId: socket.id });
+            io.emit("user-disconnected", { userId: socket.user._id.toString() });
         });
     })
 }
