@@ -15,7 +15,7 @@ function initSocket(server) {
     const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
     const io = new Server(server, {
         cors: {
-            origin: allowedOrigin,
+            origin: "/",
             credentials: true
         }
     });
