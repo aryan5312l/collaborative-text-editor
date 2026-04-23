@@ -67,7 +67,7 @@ CollabX moves away from "Last-Write-Wins" by treating the server as the **Source
 
 ### **1. Clone the Repository**
 ```bash
-git clone <your-repo-link>
+git clone https://github.com/aryan5312l/collaborative-text-editor
 cd collabx-editor
 ```
 
