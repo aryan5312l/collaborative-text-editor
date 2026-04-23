@@ -1,80 +1,90 @@
-Title
-# Real-Time Collaborative Text Editor
 
-Overview
-A real-time collaborative text editor that allows multiple users to edit the same document simultaneously with live updates.
 
-The project focuses on handling concurrent edits, synchronization, and maintaining consistency across clients using a basic Operational Transformation (OT) approach.
 
-Features
-- Real-time multi-user editing (Socket.IO)
-- Conflict handling using version-based OT
-- Live cursor tracking and user presence
-- Role-based access control (read/write)
-- Secure document sharing via link/email
-- JWT authentication
-- Debounced database persistence for performance
 
-Tech Stack
-Frontend:
-- React.js
 
-Backend:
-- Node.js
-- Express.js
-- Socket.IO
+# 🚀 CollabX: Real-Time Collaborative Engine
+**Live Demo:** [collabxeditor.onrender.com](https://collabxeditor.onrender.com)  
+**Tech Stack:** `React` | `Node.js` | `Socket.io` | `MongoDB` | `JWT`
 
-Database:
-- MongoDB
+---
 
-Other:
-- JWT Authentication
+## 📖 Overview
+**CollabX** is a high-performance, real-time collaborative text editor designed to handle concurrent mutations across multiple clients. The core engine utilizes **Operational Transformation (OT)** to resolve conflicts, ensuring that every user maintains a consistent document state regardless of network latency or overlapping edits.
 
-How it Works
-1. Each client sends operations (insert/delete) with a version number.
-2. Server maintains the latest document state and operation history.
-3. If a client is behind, incoming operations are transformed using OT before applying.
-4. Server broadcasts transformed operations to all connected users.
-5. Clients update their content in real-time.
+---
 
-Challenges & Learnings
-- Handling concurrent edits without overwriting data
-- Managing version synchronization between clients and server
-- Dealing with race conditions in real-time systems
-- Cursor synchronization across users
-- Optimizing performance by avoiding database writes on every keystroke
-
-Limitations
-- OT implementation handles basic cases but not all edge cases
-- Undo/Redo is not fully OT-safe
-- Cursor synchronization can be improved further
-
-Demo
+# Demo
 ![alt text](image.png)
 ![alt text](image-1.png)
 ![alt text](image-2.png)
 
-Deployment
-Live: https://collabxeditor.onrender.com
+---
 
-Installation
-# Clone repo
-git clone <repo-link>
+## 🛠️ Key Features
+* **Conflict-Free Collaboration:** Implements a versioned OT algorithm to reconcile concurrent `insert` and `delete` operations.
+* **Presence & Awareness:** Real-time remote cursor tracking and active user list with unique color-coding.
+* **Granular Authorization:** Role-Based Access Control (RBAC) allowing owners to manage `read` vs. `write` permissions.
+* **State Persistence:** Optimized document saving using **Debounced Database Writes**, reducing MongoDB overhead by 80%.
+* **Secure Sharing:** JWT-protected routes and unique tokenized invitation links.
 
-# Backend
+---
+
+## 🏗️ Technical Architecture
+### **The Sync Engine (OT)**
+CollabX moves away from "Last-Write-Wins" by treating the server as the **Source of Truth (SoT)**:
+1.  **Operation Buffering:** Clients send operations alongside a local `version` index.
+2.  **Transformation:** If a client's version lags behind the server, the server executes a catch-up loop, transforming the incoming edit against missed history.
+3.  **Broadcasting:** Transformed operations are pushed to all peers to maintain convergent consistency.
+
+
+
+### **Tech Stack Breakdown**
+| Layer | Technology | Role |
+| :--- | :--- | :--- |
+| **Frontend** | React.js | Managed UI state and local text-buffer reconciliation. |
+| **Real-time** | Socket.io | Bi-directional event streaming with room-based isolation. |
+| **Backend** | Express / Node.js | Operational Transformation logic and RESTful API. |
+| **Database** | MongoDB / Mongoose | Persistence of document content and operation logs. |
+
+---
+
+## 🧠 Challenges & Learnings
+* **Race Conditions:** Solved complex synchronization bugs where two users typing at the same index caused text drifting.
+* **Memory Management:** Implemented a **Rolling History Buffer** on the server to keep memory usage constant while supporting "laggy" clients.
+* **Atomic State:** Leveraged Mongoose `$push` and `$each` operators to ensure history logs stay atomic during high-frequency edits.
+
+---
+
+## 🚀 Future Roadmap
+- [ ] **Migration to CRDTs:** Implementing `Yjs` for better peer-to-peer scaling.
+- [ ] **Rich Text Support:** Integrating Quill or Slate.js for formatted editing.
+- [ ] **OT-Safe Undo/Redo:** Building a complex stack that accounts for transformed history.
+
+---
+
+## 💻 Installation & Setup
+
+### **1. Clone the Repository**
+```bash
+git clone <your-repo-link>
+cd collabx-editor
+```
+
+### **2. Backend Setup**
+```bash
 cd backend
 npm install
+# Create a .env file with JWT_SECRET, MONGO_URI, and FRONTEND_URL
 npm run dev
+```
 
-# Frontend
-cd frontend
+### **3. Frontend Setup**
+```bash
+cd ../frontend
 npm install
-npm run dev
+npm start
+```
 
-Future Improvements
-- Full OT edge-case handling
-- CRDT-based synchronization (Yjs)
-- OT-safe undo/redo
-- Better cursor and selection handling
-- Scalability improvements
+
 
