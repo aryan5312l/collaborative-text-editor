@@ -4,7 +4,7 @@ import { useRef, useEffect } from "react";
 import { applyOperation } from "../utils/operationUtils";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function TextEditor({ content, setContent, docId, cursors, undoStackRef, redoStackRef, permission, users }) {
+export default function TextEditor({ content, setContent, docId, cursors, undoStackRef, redoStackRef, permission, users, version, setVersion }) {
     const mirrorRef = useRef(null);
     const textareaRef = useRef(null);
     const isReadOnly = permission === "read";
@@ -63,8 +63,10 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
         socket.emit("send-operation", {
             docId,
             operation,
-            cursor: cursorPos
+            cursor: cursorPos,
+            version
         });
+        setVersion(prev => prev+1);
     };
 
     const handleSelect = (e) => {

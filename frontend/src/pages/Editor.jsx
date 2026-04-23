@@ -15,6 +15,7 @@ export default function Editor() {
     const [isLoading, setIsLoading] = useState(true);
     const [users, setUsers] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
+    const [version, setVersion] = useState(0);
     const navigate = useNavigate();
     
     const params = new URLSearchParams(window.location.search);
@@ -47,6 +48,7 @@ export default function Editor() {
             if (typeof data === "object" && data !== null) {
                 setContent(data.content);
                 setPermission(data.permission);
+                setVersion(data.version);
                 setIsLoading(false);
                 setIsConnected(true);
             }
@@ -56,9 +58,10 @@ export default function Editor() {
             setUsers(users);
         });
 
-        socket.on("receive-operation", ({ operation, userId, cursor }) => {
+        socket.on("receive-operation", ({ operation, userId, cursor, version }) => {
             if (userId === socket.id) return;
             setContent((prev) => applyOperation(prev, operation));
+            setVersion(version);
 
             setCursors((prev) => ({
                 ...prev,
@@ -277,6 +280,8 @@ export default function Editor() {
                         redoStackRef={redoStackRef}
                         permission={permission}
                         users={users}
+                        version={version}
+                        setVersion={setVersion}
                     />
                 </div>
 

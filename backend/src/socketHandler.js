@@ -3,6 +3,8 @@ const Document = require("./models/documentModel");
 const jwt = require("jsonwebtoken");
 const User = require("./models/userModel");
 
+const docVersion = {}; // Track version for each document
+
 const saveTimers = {};
 const latestContent = {};
 const pendingOps = {};
@@ -46,6 +48,7 @@ function initSocket(server) {
     io.on("connection", (socket) => {
         console.log("User connected: ", socket.user._id, socket.user.name);
 
+
         //Join document room
         socket.on("join-document", async (docId) => {
             let permission = "read";
@@ -58,6 +61,8 @@ function initSocket(server) {
             //     { $setOnInsert: { docId, content: "", history: [] } },
             //     { upsert: true, returnDocument: "after" }
             // );
+
+            if(!docVersion[docId]) docVersion[docId] = 0;
 
             const document = await Document.findOne({ docId });
             if (!document) {
@@ -98,6 +103,7 @@ function initSocket(server) {
             io.to(docId).emit("users-in-doc", docUsers[docId]);
 
             socket.docId = docId; //store for disconnection
+            
 
             if (isOwner) permission = "owner";
             else if (isShared) {
@@ -110,7 +116,7 @@ function initSocket(server) {
                 permission = document.shareLink.permission;
             }
 
-
+            socket.permission = permission; //store for later use
 
             if (!latestContent[docId]) {
                 latestContent[docId] = document.content;
@@ -119,7 +125,8 @@ function initSocket(server) {
 
             socket.emit("load-document", {
                 content: latestContent[docId] || document.content,
-                permission
+                permission,
+                version: docVersion[docId]
             });
         });
 
@@ -174,29 +181,22 @@ function initSocket(server) {
 
 
         //Receive operation from client
-        socket.on("send-operation", async ({ docId, operation, cursor }) => {
-            let document = await Document.findOne({ docId });
-            if (!latestContent[docId]) {
-                latestContent[docId] = document?.content || "";
+        socket.on("send-operation", async ({ docId, operation, cursor, version }) => {
+            const serverVersion = docVersion[docId] || 0;
+
+            if(version !== serverVersion) {
+                console.log(`Version mismatch: client ${version} vs server ${serverVersion}`);
+                return; //Later we can implement transformation here
             }
 
-            const isOwner = document?.userId?.toString() === socket.user._id.toString();
-
-            const sharedUser = document.sharedWith.find(
-                u => u.userId.toString() === socket.user._id.toString()
-            );
-
-            const hasLinkAccess =
-                socket.handshake.auth.tokenParam &&
-                document.shareLink?.token === socket.handshake.auth.tokenParam;
-
-            const canEdit =
-                isOwner || (sharedUser && sharedUser.permission === "write") || (hasLinkAccess && document.shareLink?.permission === "write");
-
-            if (!canEdit) return; // block edits
+            if(socket.permission !== "owner" && socket.permission !== "write") {
+                return socket.emit("error", "You don't have permission to edit this document");
+            }           
 
             // Apply operation
             latestContent[docId] = applyOperation(latestContent[docId], operation);
+
+            docVersion[docId]++; //Increment version
 
             // Save for DB (debounced)
             if (!pendingOps[docId]) pendingOps[docId] = [];
@@ -227,7 +227,8 @@ function initSocket(server) {
                 operation,
                 userId: socket.user._id,
                 userName: socket.user.name,
-                cursor
+                cursor,
+                version: docVersion[docId]
             });
         });
 
