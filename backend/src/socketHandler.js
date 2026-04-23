@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const User = require("./models/userModel");
 
 const docVersion = {}; // Track version for each document
+const docHistory = {}; // docHistory[docId] = { op1, op2, ...};
 
 const saveTimers = {};
 const latestContent = {};
@@ -62,7 +63,8 @@ function initSocket(server) {
             //     { upsert: true, returnDocument: "after" }
             // );
 
-            if(!docVersion[docId]) docVersion[docId] = 0;
+            if (!docVersion[docId]) docVersion[docId] = 0;
+            if (!docHistory[docId]) docHistory[docId] = [];
 
             const document = await Document.findOne({ docId });
             if (!document) {
@@ -103,7 +105,7 @@ function initSocket(server) {
             io.to(docId).emit("users-in-doc", docUsers[docId]);
 
             socket.docId = docId; //store for disconnection
-            
+
 
             if (isOwner) permission = "owner";
             else if (isShared) {
@@ -184,17 +186,28 @@ function initSocket(server) {
         socket.on("send-operation", async ({ docId, operation, cursor, version }) => {
             const serverVersion = docVersion[docId] || 0;
 
-            if(version !== serverVersion) {
-                console.log(`Version mismatch: client ${version} vs server ${serverVersion}`);
-                return; //Later we can implement transformation here
+            if (socket.permission !== "owner" && socket.permission !== "write") {
+                return socket.emit("error", "You don't have permission to edit this document");
             }
 
-            if(socket.permission !== "owner" && socket.permission !== "write") {
-                return socket.emit("error", "You don't have permission to edit this document");
-            }           
+            let transformedOp = { ...operation };
+
+            //Transform against missed ops
+            for (let i = version; i < serverVersion; i++) {
+                const histOp = docHistory[docId][i];
+                if(!histOp) continue;
+
+                transformedOp = transformOperation(transformedOp, docHistory[docId][i]);
+            }
 
             // Apply operation
-            latestContent[docId] = applyOperation(latestContent[docId], operation);
+            latestContent[docId] = applyOperation(latestContent[docId], transformedOp);
+            const MAX_HISTORY = 100;
+            docHistory[docId].push(transformedOp);
+
+            // if (docHistory[docId].length > MAX_HISTORY) {
+            //     docHistory[docId].shift();
+            // }
 
             docVersion[docId]++; //Increment version
 
@@ -224,7 +237,7 @@ function initSocket(server) {
 
             // Broadcast
             socket.to(docId).emit("receive-operation", {
-                operation,
+                operation: transformedOp,
                 userId: socket.user._id,
                 userName: socket.user.name,
                 cursor,
@@ -234,7 +247,7 @@ function initSocket(server) {
 
         //Leave document room
         socket.on("leave-document", (docId) => {
-            if(!docUsers[docId]) return;
+            if (!docUsers[docId]) return;
 
             docUsers[docId] = docUsers[docId].filter(
                 u => u.userId !== socket.user._id.toString()

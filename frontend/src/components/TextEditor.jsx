@@ -11,7 +11,7 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
 
     const handleChange = (e) => {
         if (isReadOnly) return;
-        
+
         const newText = e.target.value;
         const oldText = content || "";
         const cursorPos = e.target.selectionStart;
@@ -60,13 +60,23 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
 
         setContent(newText);
 
+
         socket.emit("send-operation", {
             docId,
             operation,
             cursor: cursorPos,
             version
         });
-        setVersion(prev => prev+1);
+
+        // setTimeout(() => {
+        //     socket.emit("send-operation", {
+        //         docId,
+        //         operation,
+        //         version,
+        //         cursor: cursorPos
+        //     });
+        // }, 300); // simulate lag
+        setVersion(prev => prev + 1);
     };
 
     const handleSelect = (e) => {
@@ -76,7 +86,7 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
 
     const handleKeyDown = (e) => {
         if (isReadOnly) return;
-        
+
         // Ctrl+Z for undo
         if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
             e.preventDefault();
@@ -124,7 +134,7 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
 
             const { top, left } = getCursorCoordinates(position);
             const user = users?.find(u => u.userId === userId);
-            
+
             if (!user) return null;
 
             return (
@@ -206,6 +216,14 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
         });
     };
 
+    const testConcurrent = () => {
+        const op1 = { type: "insert", position: 0, text: "A" };
+        const op2 = { type: "insert", position: 0, text: "B" };
+
+        socket.emit("send-operation", { docId, operation: op1, version });
+        socket.emit("send-operation", { docId, operation: op2, version });
+    };
+
     return (
         <div className="relative">
             <div style={{ position: "relative" }} className="w-full">
@@ -228,7 +246,7 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
                         fontFamily: "'Fira Code', 'Cascadia Code', 'Courier New', monospace",
                         cursor: isReadOnly ? "default" : "text"
                     }}
-                    
+
                     placeholder={isReadOnly ? "view only mode — you can't edit this document" : "start typing... your collaborators will see changes instantly"}
                 />
 
@@ -250,6 +268,7 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
                         pointerEvents: "none"
                     }}
                 />
+                <button onClick={testConcurrent}>Test OT</button>
 
                 {/* Cursors overlay */}
                 <div
@@ -293,7 +312,7 @@ export default function TextEditor({ content, setContent, docId, cursors, undoSt
                         <span>↩️</span>
                         <span>undo</span>
                     </motion.button>
-                    
+
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

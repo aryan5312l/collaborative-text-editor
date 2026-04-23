@@ -18,27 +18,74 @@ function applyOperation(content, operation) {
     return content;
 }
 
-function transformOperation(newOp, history){
-    let transformed = {...newOp};
+function transformOperation(op1, op2) {
+    let result = { ...op1 };
 
-    for(let op of history){
-        //If prev  op was insert
-        if(op.type === "insert"){
-            if(op.position <= transformed.position){
-                transformed.position += op.text.length;
-            }
+    // ========================
+    // INSERT vs INSERT
+    // ========================
+    if (op1.type === "insert" && op2.type === "insert") {
+        if (
+            op2.position < op1.position ||
+            (op2.position === op1.position)
+        ) {
+            result.position += op2.text.length;
         }
-
-        //If prev op was delete
-        if(op.type === "delete"){
-            if(op.position < transformed.position){
-                transformed.position -= Math.min(op.length, transformed.position - op.position);
-            }
-        }
-
     }
 
-    return transformed;
+    // ========================
+    // INSERT vs DELETE
+    // ========================
+    else if (op1.type === "insert" && op2.type === "delete") {
+        if (op2.position < op1.position) {
+            result.position -= Math.min(
+                op2.length,
+                op1.position - op2.position
+            );
+        }
+    }
+
+    // ========================
+    // DELETE vs INSERT
+    // ========================
+    else if (op1.type === "delete" && op2.type === "insert") {
+        if (op2.position <= op1.position) {
+            result.position += op2.text.length;
+        } else if (op2.position < op1.position + op1.length) {
+            // Insert inside delete range → expand delete
+            result.length += op2.text.length;
+        }
+    }
+
+    // ========================
+    // DELETE vs DELETE
+    // ========================
+    else if (op1.type === "delete" && op2.type === "delete") {
+
+        // Case 1: op2 completely before op1
+        if (op2.position + op2.length <= op1.position) {
+            result.position -= op2.length;
+        }
+
+        // Case 2: op2 completely after op1
+        else if (op2.position >= op1.position + op1.length) {
+            // no change
+        }
+
+        // Case 3: overlap
+        else {
+            const start = Math.min(op1.position, op2.position);
+            const end = Math.max(
+                op1.position + op1.length,
+                op2.position + op2.length
+            );
+
+            result.position = start;
+            result.length = end - start - op2.length;
+        }
+    }
+
+    return result;
 }
 
 function invertOperation(content, operation){
